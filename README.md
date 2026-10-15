@@ -50,10 +50,15 @@ Le backend lit `process.env.PORT` → compatible avec le port que Railway assign
    ```
 2. Sur [railway.app](https://railway.app) → **New Project → Deploy from GitHub repo** → sélectionne le repo
    (Railway détecte `railway.json` automatiquement, builder **Nixpacks**)
-3. Dans **Variables** du service, ajoute :
+3. ⚠️ **Root Directory doit être vide** (la racine du repo) : le build fait
+   `cd backend && ... && cd ../frontend && ...`. Si Root Directory pointe sur `backend`,
+   la commande échoue avec `cd: can't cd to backend`.
+   Le `package.json` à la racine du repo n'est qu'un detecteur Node/npm pour railpack
+   (aucune dépendance) — ne pas le supprimer.
+4. Dans **Variables** du service, ajoute :
    - `ANTHROPIC_API_KEY` = ta clé Anthropic (obtenue sur https://console.anthropic.com → API keys)
    - `CLAUDE_MODEL` (optionnel, défaut `claude-haiku-4-5-20251001`)
-4. **Settings → Networking → Generate Domain** → `https://ton-app.up.railway.app`
+5. **Settings → Networking → Generate Domain** → `https://ton-app.up.railway.app`
 
 ### Alternative sans GitHub (CLI)
 ```bash

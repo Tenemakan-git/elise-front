@@ -1,0 +1,15 @@
+{
+  "name": "elise-fullstack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Élise — Fullstack Pro (React + Vite frontend, NestJS backend). Racine du monorepo : sert uniquement à faire détecter Node/npm par le builder Railway (railpack).",
+  "scripts": {
+    "build": "npm --prefix backend ci && npm --prefix backend run build && npm --prefix frontend ci && npm --prefix frontend run build",
+    "start": "node backend/dist/main.js",
+    "start:backend": "npm --prefix backend run start:dev",
+    "start:frontend": "npm --prefix frontend run dev"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
