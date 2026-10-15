@@ -1,0 +1,18 @@
+# Dépendances
+node_modules/
+
+# Builds
+dist/
+
+# Dernières dépendances
+npm-debug.log*
+yarn-error.log*
+
+# Environnement (ne JAMAIS commiter les clés !)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
