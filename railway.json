@@ -1,0 +1,14 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "cd backend && npm ci && npm run build && cd ../frontend && npm ci && npm run build"
+  },
+  "deploy": {
+    "startCommand": "node backend/dist/main.js",
+    "healthcheckPath": "/api/chat/status",
+    "healthcheckTimeout": 120,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}
