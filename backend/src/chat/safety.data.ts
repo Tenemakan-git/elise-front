@@ -76,7 +76,9 @@ export const BYPASS_TERMS: string[] = [
 /* ------------------------------------------------------------------ */
 /*  3. Messages d'urgence preecrits (niveau rouge) — VALIDES, servis tels quels  */
 /* ------------------------------------------------------------------ */
-/*  A faire relire et valider par un professionnel de sante avant la finale.  */
+/*  Relus et valides par un professionnel de sante (nov. 2026).               */
+/*  Numeros confirmes : 185 (SAMU) et 1308 (VBG). Le 139 a ete retire faute   */
+/*  de source officielle le confirmant.                                       */
 /*  Le modele ne peut PAS remplacer ces textes ; il peut seulement ajouter    */
 /*  une courte phrase d'empathie en tete (voir claude.service.ts).            */
 
@@ -102,7 +104,7 @@ export const EMERGENCY_MESSAGES: EmergencyMessage[] = [
       `Deux choses comptent dans les <b>72 heures</b> : une protection d'urgence contre une grossesse et un traitement preventif contre le VIH. Ils sont d'autant plus efficaces qu'ils sont pris tot, dans ce delai.<br><br>` +
       `<b>Va consulter meme si tu t'es deja lavee</b>, et meme si du temps a passe : un centre de sante ou un hopital pourra t'accompagner.<br><br>` +
       `Si tu le peux, parle a <b>une personne en qui tu as confiance</b> pour ne pas rester seule.<br><br>` +
-      `Numeros gratuits et confidentiels : <b>VBG 1308</b> (24h/24), <b>SAMU 185</b>, <b>ecoute psychologique 139</b>.`,
+      `Numeros gratuits et confidentiels : <b>VBG 1308</b> (24h/24) et <b>SAMU 185</b>.`,
   },
   {
     kind: 'suicide',
@@ -113,7 +115,7 @@ export const EMERGENCY_MESSAGES: EmergencyMessage[] = [
     html:
       `<b>Es-tu en securite en ce moment ?</b> Ce que tu ressens est tres lourd, et tu n'as pas a le porter seule.<br><br>` +
       `Ta vie compte. Il existe des personnes formees pour t'ecouter, sans juger.<br><br>` +
-      `Appelle maintenant la ligne d'<b>ecoute psychologique 139</b>, ou le <b>185</b> si tu es en danger immediat.<br><br>` +
+      `Appelle le <b>185</b> tout de suite si tu es en danger immediat. Tu n'as pas a rester seule : rends-toi dans un centre de sante, qui pourra t'ecouter et t'orienter.<br><br>` +
       `Si tu le peux, reste avec <b>une personne en qui tu as confiance</b> le temps que l'urgence passe.<br><br>` +
       `Je reste la. Veux-tu me dire ce qui se passe en ce moment ?`,
   },
@@ -136,7 +138,7 @@ export const EMERGENCY_MESSAGES: EmergencyMessage[] = [
 export const EMERGENCY_DEFAULT_HTML =
   `<b>Es-tu en securite en ce moment ?</b> Si tu es en danger, appelle le <b>185</b> (SAMU) ou le <b>1308</b> (violences).<br><br>` +
   `Tu n'es pas seule et ce n'est pas ta faute. Des personnes sont la pour t'aider, gratuitement et en confidentialite.<br><br>` +
-  `Numeros : <b>SAMU 185</b>, <b>Violences (VBG) 1308</b>, <b>ecoute psychologique 139</b>.<br><br>` +
+  `Numeros : <b>SAMU 185</b> et <b>Violences (VBG) 1308</b>.<br><br>` +
   `Je reste la. Raconte-moi ce qui se passe.`;
 
 /** Selectionne le message d'urgence le plus adapte au texte (compare sans accent). */

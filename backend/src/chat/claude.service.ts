@@ -279,9 +279,9 @@ export class ClaudeService {
     if (t.includes('contraception') || t.includes('pilule') || t.includes('preservatif'))
       return `Plusieurs moyens existent : le <b>preservatif</b> (seul a proteger aussi des IST), la pilule, l'implant, le DIU. Le choix depend de toi et merite d'etre discute en <b>planning familial</b> (AIBEF Abidjan). Veux-tu que je t'explique comment s'y rendre ?`;
     if (t.includes('triste') || t.includes('stress') || t.includes('seule'))
-      return `Je t'entends, et ce que tu ressens compte. Essaie de <b>parler a une personne de confiance</b>, de dormir suffisamment et de bouger un peu chaque jour. Si cela dure plus de deux semaines ou pese trop lourd, la ligne <b>139</b> est la pour t'ecouter. Depuis quand te sens-tu ainsi ?`;
+      return `Je t'entends, et ce que tu ressens compte. Essaie de <b>parler a une personne de confiance</b>, de dormir suffisamment et de bouger un peu chaque jour. Si cela dure plus de deux semaines ou pese trop lourd, <b>parles-en a un professionnel de sante</b>. Depuis quand te sens-tu ainsi ?`;
     if (first && (t.includes('bonjour') || t.includes('salut')))
       return `Bonjour, et bienvenue. Tu peux me parler <b>cycle, contraception, IST, grossesse ou emotions</b>, sans tabou. Qu'est-ce qui t'amene aujourd'hui ?`;
-    return `Merci de ta confiance. Pour mieux t'orienter, dis-moi depuis quand cela dure et ce que tu ressens. En cas d'urgence : <b>185 / 1308 / 139</b>.`;
+    return `Merci de ta confiance. Pour mieux t'orienter, dis-moi depuis quand cela dure et ce que tu ressens. En cas d'urgence : <b>185</b> (SAMU) ou <b>1308</b> (violences).`;
   }
 }
