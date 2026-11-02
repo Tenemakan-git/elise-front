@@ -29,12 +29,7 @@ function Emergency() {
       </a>
       <a href="tel:1308" className="emg-call">
         <span className="emg-num">1308</span>
-        <span className="emg-info"><b>Violences (VBG)</b><small>Ligne verte, 24h/24</small></span>
-        <IconPhone size={20} />
-      </a>
-      <a href="tel:139" className="emg-call">
-        <span className="emg-num">139</span>
-        <span className="emg-info"><b>Écoute psychologique</b><small>Confidentiel</small></span>
+        <span className="emg-info"><b>Violences (VBG)</b><small>Ligne verte, 24h/24 — écoute et soutien</small></span>
         <IconPhone size={20} />
       </a>
     </div>
@@ -173,7 +168,6 @@ export default function App() {
         <div className="side-urg">
           <div><span>SAMU</span><b>185</b></div>
           <div><span>Violences (VBG)</span><b>1308</b></div>
-          <div><span>Écoute psychologique</span><b>139</b></div>
         </div>
       </nav>
 

@@ -74,8 +74,8 @@ Résultat **mode local** (base de référence, sans clé API) : **49/50 (98 %)**
 
 ## Reste à faire (hors code)
 
-- Faire **valider les 3 messages d'urgence** par un professionnel de santé.
-- Vérifier les numéros **185 / 1308 / 139** sur un vrai téléphone.
+- ~~Faire **valider les 3 messages d'urgence** par un professionnel de santé.~~ Fait (nov. 2026).
+- Numéros : **185** (SAMU) et **1308** (VBG) confirmés et conservés ; le **139** a été retiré faute de source officielle. Vérifier 185 et 1308 sur un vrai téléphone.
 - Construire la **base de sources** (OMS, ministère, ONG) + brancher le RAG
   (les PDF doivent être fournis à l'équipe).
 - Tester le masquage d'écran sur **Android et iOS** réels.

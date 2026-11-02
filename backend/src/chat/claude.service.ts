@@ -323,6 +323,6 @@ export class ClaudeService {
       return `Ce que tu decris merite l'avis d'un professionnel. <b>Consulte un centre de sante ou un planning familial a Abidjan</b> cette semaine (AIBEF, par exemple). Je peux t'aider a <b>preparer ta consultation</b>.`;
     if (first && (t.includes('bonjour') || t.includes('salut')))
       return `Bonjour, et bienvenue. Tu peux me parler <b>cycle, contraception, IST, grossesse ou emotions</b>, sans tabou. Qu'est-ce qui t'amene aujourd'hui ?`;
-    return `Merci de ta confiance. Pour mieux t'orienter, dis-moi depuis quand cela dure et ce que tu ressens. En cas d'urgence : <b>185 / 1308 / 139</b>.`;
+    return `Merci de ta confiance. Pour mieux t'orienter, dis-moi depuis quand cela dure et ce que tu ressens. En cas d'urgence : <b>185</b> (SAMU) ou <b>1308</b> (violences).`;
   }
 }
