@@ -73,7 +73,7 @@ export class ChatService {
     const store = this.store(sessionId);
     const history = this.turns(store);
 
-    const { answer, classification } = await this.claude.classifyAndAnswer(message, history);
+    const { answer, classification, source } = await this.claude.classifyAndAnswer(message, history);
     const item: HistItem = {
       id: String(this.seq++),
       question: message,
@@ -89,6 +89,7 @@ export class ChatService {
       label: classification.label,
       reason: classification.reason,
       via: classification.via,
+      source: source || null,
       claudeEnabled: this.claude.enabled,
       createdAt: item.createdAt,
     };

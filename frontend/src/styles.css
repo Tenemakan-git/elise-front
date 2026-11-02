@@ -281,3 +281,9 @@ button.pill.lock:hover{border-color:var(--magenta);color:var(--magenta)}
 .pv-keep{list-style:none;display:grid;gap:7px}
 .pv-keep li{font-size:12.5px;color:var(--texte);line-height:1.5;padding-left:18px;position:relative}
 .pv-keep li::before{content:"✓";position:absolute;left:0;color:#1D7A52;font-weight:700}
+
+/* Source d'une réponse fondée sur le corpus vérifié (RAG) */
+.src{display:block;margin-top:9px;padding-top:8px;border-top:1px solid var(--bord);
+  font-size:11.5px;color:var(--muted)}
+.src a{color:var(--magenta);text-decoration:none;font-weight:500}
+.src a:hover{text-decoration:underline}
