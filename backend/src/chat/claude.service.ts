@@ -295,6 +295,10 @@ export class ClaudeService {
     const p = hits[0].passage;
     // On sert le texte de l'extrait, mis en forme, sans rien inventer.
     const html = formatHtml(p.text);
+    // Securite : si l'extrait nomme une maladie ou un medicament (educatif mais
+    // qui, servi tel quel a une demande de diagnostic, se lirait comme un
+    // diagnostic), on ne le sert pas en local : repli vers une reponse sure.
+    if (this.safety.filterOutput(html).blocked) return null;
     return { html, source: { title: p.title, source: p.source, url: p.url } };
   }
 
@@ -323,6 +327,6 @@ export class ClaudeService {
       return `Ce que tu decris merite l'avis d'un professionnel. <b>Consulte un centre de sante ou un planning familial a Abidjan</b> cette semaine (AIBEF, par exemple). Je peux t'aider a <b>preparer ta consultation</b>.`;
     if (first && (t.includes('bonjour') || t.includes('salut')))
       return `Bonjour, et bienvenue. Tu peux me parler <b>cycle, contraception, IST, grossesse ou emotions</b>, sans tabou. Qu'est-ce qui t'amene aujourd'hui ?`;
-    return `Merci de ta confiance. Pour mieux t'orienter, dis-moi depuis quand cela dure et ce que tu ressens. En cas d'urgence : <b>185 / 1308 / 139</b>.`;
+    return `Merci de ta confiance. Pour mieux t'orienter, dis-moi depuis quand cela dure et ce que tu ressens. En cas d'urgence : <b>185</b> (SAMU) ou <b>1308</b> (violences).`;
   }
 }

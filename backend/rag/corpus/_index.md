@@ -21,6 +21,7 @@ professionnel de santé** avant diffusion.
 | oms-grossesse-adolescentes.md | Grossesse adolescente | OMS |
 | oms-soins-prenatals.md | Suivi prénatal | OMS |
 | ist-signes-depistage.md | IST : signes, prévention, dépistage | O'YES (BE) |
+| ci-depistage-ist-abidjan.md | Où se faire dépister (IST/VIH) à Abidjan | Min. Santé CI / répertoire CDV |
 | oms-sante-adolescents.md | Santé mentale / bien-être | OMS |
 | oms-sante-sexuelle.md | Santé sexuelle (socle) | OMS |
 | ci-numeros-urgence.md | Urgences (185) | Min. Aff. étrangères CI |
@@ -32,7 +33,11 @@ professionnel de santé** avant diffusion.
 - **SAFE-ENGAGE PRB Côte d'Ivoire** : document de plaidoyer et statistiques, sans contenu pratique pour répondre à une utilisatrice.
 - **WeerWi (règles)**, **brochure IST Plateforme Prévention Sida (BE)**, **UNFPA CSE** : redondants avec les fichiers déjà retenus (cycle, IST).
 
-## Lacunes connues
+## Points résolus
 
-- **Orientation IST locale** : aucune source ne donne les structures de dépistage à Abidjan. Les faits médicaux viennent d'une source belge (coordonnées belges retirées) ; l'orientation renvoie génériquement vers AIBEF / centre de santé.
-- **Numéro 139** (écoute psychologique) : non confirmé par une source officielle. Confirmés : **185** (SAMU) et **1308** (VBG, avec soutien psychologique). Décision en attente pour les messages d'urgence du code.
+- **Orientation IST locale** : ajout de `ci-depistage-ist-abidjan.md` (orientation générique + 5 centres du Grand Abidjan confirmés par le Ministère de la Santé). Les faits médicaux IST restent d'une source belge (coordonnées belges retirées).
+- **Numéro 139** : retiré partout (code + interface), faute de source officielle. Numéros conservés : **185** (SAMU) et **1308** (VBG, avec soutien psychologique).
+
+## Reste
+
+- Vérifier périodiquement que les centres de dépistage listés sont toujours ouverts (le répertoire national peut être daté).
