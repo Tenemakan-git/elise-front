@@ -113,6 +113,7 @@ export default function App() {
           });
         } else if (ev.type === 'done') {
           finalLevel = ev.level || finalLevel;
+          const source = ev.source || null;
           let extra = '';
           if (finalLevel === 'orange') extra = '<br><br>Prochaine étape conseillée : consulter une sage-femme ou un centre de planning familial à Abidjan cette semaine.';
           if (finalLevel === 'yellow') extra = '<br><br>Suivi : reviens dans 2 à 3 jours me donner des nouvelles de l’évolution.';
@@ -120,7 +121,7 @@ export default function App() {
             const copy = [...m];
             for (let i = copy.length - 1; i >= 0; i--) {
               if (copy[i].who === 'bot' && copy[i].streaming) {
-                copy[i] = { who: 'bot', level: finalLevel, html: (accHtml || copy[i].html) + extra, emg: finalLevel === 'red', via };
+                copy[i] = { who: 'bot', level: finalLevel, html: (accHtml || copy[i].html) + extra, emg: finalLevel === 'red', via, source };
                 break;
               }
             }
@@ -202,6 +203,13 @@ export default function App() {
                   <span className="dots"><i /><i /><i /></span>
                 )}
                 {m.streaming && <span className="cursor" />}
+                {m.source && (
+                  <span className="src">
+                    Source : {m.source.url
+                      ? <a href={m.source.url} target="_blank" rel="noopener noreferrer">{m.source.source || m.source.title}</a>
+                      : (m.source.source || m.source.title)}
+                  </span>
+                )}
                 {m.emg && <Emergency />}
               </div>
             );
