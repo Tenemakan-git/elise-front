@@ -295,6 +295,10 @@ export class ClaudeService {
     const p = hits[0].passage;
     // On sert le texte de l'extrait, mis en forme, sans rien inventer.
     const html = formatHtml(p.text);
+    // Securite : si l'extrait nomme une maladie ou un medicament (educatif mais
+    // qui, servi tel quel a une demande de diagnostic, se lirait comme un
+    // diagnostic), on ne le sert pas en local : repli vers une reponse sure.
+    if (this.safety.filterOutput(html).blocked) return null;
     return { html, source: { title: p.title, source: p.source, url: p.url } };
   }
 
