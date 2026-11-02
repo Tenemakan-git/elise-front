@@ -49,7 +49,7 @@ Le **traitement post-exposition (TPE / PEP)** doit être pris **le plus rapideme
 
 ## Orientation (Côte d'Ivoire)
 
-Pour un dépistage ou un traitement en Côte d'Ivoire, orienter vers un **centre de santé, un centre de planning familial (AIBEF Abidjan), un CDT/CDV** ou un hôpital. Le dépistage du VIH est généralement gratuit et confidentiel. Pour les lieux précis à Abidjan, voir la fiche « Où se faire dépister à Abidjan ». Ne jamais poser de diagnostic : seul un test en structure confirme une IST.
+Pour un dépistage ou un traitement en Côte d'Ivoire, orienter vers un **centre de santé, un centre de planning familial (AIBEF Abidjan), un CDT/CDV** ou un hôpital. Le dépistage du VIH est généralement gratuit et confidentiel. Des centres de dépistage existent dans plusieurs communes d'Abidjan. Ne jamais poser de diagnostic : seul un test en structure confirme une IST.
 
 ## En bref
 

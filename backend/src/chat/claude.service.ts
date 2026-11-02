@@ -36,8 +36,12 @@ const LABELS: Record<RiskLevel, string> = {
   red: 'Urgence',
 };
 
-/** Score BM25 minimal pour juger un passage reellement pertinent. */
-const RAG_MIN_SCORE = 3.0;
+/**
+ * Score BM25 minimal pour juger un passage reellement pertinent.
+ * Les correspondances solides sont a >= 5,5 et les parasites a <= 3,5 : un seuil
+ * a 4,5 ecarte les extraits hors-sujet, qui retombent alors sur une reponse sure.
+ */
+const RAG_MIN_SCORE = 4.5;
 
 const SYSTEM = `Tu es Elise, assistante confidentielle de sante feminine pour jeunes Ivoiriennes (15-25 ans). Tu reponds en francais simple, bienveillant, sans jugement, en tutoyant toujours.
 
