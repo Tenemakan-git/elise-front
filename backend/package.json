@@ -6,7 +6,8 @@
     "start": "ts-node src/main.ts",
     "start:prod": "node dist/main.js",
     "start:dev": "ts-node --watch src/main.ts",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "eval": "node eval/run-eval.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

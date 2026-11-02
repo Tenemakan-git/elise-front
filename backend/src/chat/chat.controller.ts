@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, Res, Query, Delete } from '@nestjs/common';
 import type { Response } from 'express';
 import { ChatService } from './chat.service';
 import { ChatDto } from './chat.dto';
@@ -9,7 +9,7 @@ export class ChatController {
 
   @Post()
   send(@Body() dto: ChatDto) {
-    return this.chat.send(dto.message);
+    return this.chat.send(dto.message, dto.sessionId);
   }
 
   /** Streaming SSE (type ChatGPT) : meta -> chunk* -> done */
@@ -21,7 +21,7 @@ export class ChatController {
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders?.();
     try {
-      for await (const sse of this.chat.stream(dto.message)) {
+      for await (const sse of this.chat.stream(dto.message, dto.sessionId)) {
         res.write(sse);
       }
     } finally {
@@ -30,8 +30,14 @@ export class ChatController {
   }
 
   @Get('history')
-  history() {
-    return this.chat.history();
+  history(@Query('sessionId') sessionId?: string) {
+    return this.chat.history(50, sessionId);
+  }
+
+  /** Efface l'historique d'une session (confidentialite : bouton "Tout effacer"). */
+  @Delete('history')
+  clear(@Query('sessionId') sessionId?: string) {
+    return this.chat.clear(sessionId);
   }
 
   @Get('status')
