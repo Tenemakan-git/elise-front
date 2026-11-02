@@ -37,11 +37,15 @@ const LABELS: Record<RiskLevel, string> = {
 };
 
 /**
- * Score BM25 minimal pour juger un passage reellement pertinent.
- * Les correspondances solides sont a >= 5,5 et les parasites a <= 3,5 : un seuil
- * a 4,5 ecarte les extraits hors-sujet, qui retombent alors sur une reponse sure.
+ * Deux seuils de pertinence BM25 :
+ *  - RAG_MIN_SCORE (bas) : un passage est fourni au MODELE comme contexte. Bas
+ *    volontairement, car une requete courte ("ou me depister ?") plafonne a ~3,3
+ *    en BM25 ; le modele fait ensuite le tri de pertinence et de surete.
+ *  - RAG_SERVE_MIN (haut) : on ne sert un extrait BRUT (mode local, sans modele)
+ *    que si la correspondance est solide, pour eviter d'afficher un hors-sujet.
  */
-const RAG_MIN_SCORE = 4.5;
+const RAG_MIN_SCORE = 3.0;
+const RAG_SERVE_MIN = 4.5;
 
 const SYSTEM = `Tu es Elise, assistante confidentielle de sante feminine pour jeunes Ivoiriennes (15-25 ans). Tu reponds en francais simple, bienveillant, sans jugement, en tutoyant toujours.
 
@@ -294,7 +298,7 @@ export class ClaudeService {
    * verifie, sans modele. Rend la reponse + la source, ou null si rien de fiable.
    */
   private localGrounded(question: string): { html: string; source: SourceRef } | null {
-    const hits = this.rag.retrieve(question, 1).filter((h) => h.score >= RAG_MIN_SCORE);
+    const hits = this.rag.retrieve(question, 1).filter((h) => h.score >= RAG_SERVE_MIN);
     if (hits.length === 0) return null;
     const p = hits[0].passage;
     // On sert le texte de l'extrait, mis en forme, sans rien inventer.

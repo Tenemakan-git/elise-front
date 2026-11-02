@@ -63,7 +63,11 @@ const SYNONYMS: Record<string, string[]> = {
   regles: ['regle', 'regles', 'menstruation', 'menstruations', 'menstruel', 'menstruelle', 'menstrue', 'menstrues', 'cycle', 'saignement'],
   contraception: ['contraception', 'contraceptif', 'pilule', 'preservatif', 'condom', 'implant', 'diu', 'sterilet'],
   urgence_contra: ['lendemain', 'urgence', 'rattrapage'],
-  ist: ['ist', 'mst', 'infection', 'depistage', 'depister', 'chlamydia', 'gonorrhee', 'syphilis', 'herpes', 'vih', 'sida', 'mycose', 'trichomonas'],
+  ist: ['ist', 'mst', 'infection', 'chlamydia', 'gonorrhee', 'syphilis', 'herpes', 'vih', 'sida', 'mycose', 'trichomonas'],
+  // "depistage" est un jeton a part (et non fondu dans "ist") : une requete
+  // courte comme "ou me depister ?" reste specifique et retrouve la fiche dediee,
+  // au lieu de se diluer dans tous les passages parlant d'IST.
+  depistage: ['depister', 'depistage', 'depiste', 'depistages', 'tester'],
   douleur: ['douleur', 'mal', 'crampe', 'dysmenorrhee'],
   violence: ['violence', 'agression', 'viol', 'forcee', 'force', 'abus', 'vbg'],
   mental: ['triste', 'tristesse', 'deprime', 'depression', 'anxiete', 'angoisse', 'stress', 'seule', 'solitude', 'suicide'],
