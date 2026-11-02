@@ -109,9 +109,10 @@ export default function App() {
         } else if (ev.type === 'done') {
           finalLevel = ev.level || finalLevel;
           const source = ev.source || null;
-          let extra = '';
-          if (finalLevel === 'orange') extra = '<br><br>Prochaine étape conseillée : consulter une sage-femme ou un centre de planning familial à Abidjan cette semaine.';
-          if (finalLevel === 'yellow') extra = '<br><br>Suivi : reviens dans 2 à 3 jours me donner des nouvelles de l’évolution.';
+          // Pas d'ajout automatique selon le niveau : la réponse contient déjà
+          // l'orientation adaptée. Un suivi « reviens dans 2-3 jours » collé à une
+          // question d'information était hors de propos.
+          const extra = '';
           setMsgs((m) => {
             const copy = [...m];
             for (let i = copy.length - 1; i >= 0; i--) {
