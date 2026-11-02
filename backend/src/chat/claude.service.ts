@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import { RiskLevel } from './message.entity';
+import { SafetyService } from './safety.service';
 
 export interface Classified {
   level: RiskLevel;
@@ -15,21 +16,35 @@ export type StreamEvent =
   | { type: 'done'; level: RiskLevel }
   | { type: 'error'; message: string };
 
+/** Un echange passe de la session, transmis au modele pour garder le contexte. */
+export interface Turn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 const LABELS: Record<RiskLevel, string> = {
-  green: '🟢 INFORMATION',
-  yellow: '🟡 SURVEILLANCE',
-  orange: '🟠 CONSULTATION',
-  red: '🔴 URGENCE',
+  green: 'Information',
+  yellow: 'Surveillance',
+  orange: 'Consultation',
+  red: 'Urgence',
 };
 
-const SYSTEM = `Tu es Elise, assistante confidentielle de sante feminine pour jeunes Ivoiriennes (15-25 ans). Reponds en francais simple, bienveillant, sans jugement. Si agression, idees suicidaires, hemorragie -> URGENCE (SAMU 185, VBG 1308, psy 139). Ne remplaces pas un medecin. Classe en GREEN/YELLOW/ORANGE/RED.
-REGLES DE FORMAT STRICTES (obligatoires) :
-- INTERDIT d'utiliser les caracteres * et # dans ta reponse. Jamais de markdown (**gras**, *italique*, ## titre, - liste).
-- Pour mettre en valeur : utilise uniquement la balise HTML <b>mot important</b>.
-- Paragraphes courts : separe par <br><br>.
-- Listes : utilise <ul><li>point 1</li><li>point 2</li></ul> ou <ol><li>etape 1</li><li>etape 2</li></ol>.
-- Interdiction absolue d'utiliser des emojis (aucun caractère type 🌸, 😊, ❤️, 🟢, points unicode décoratifs).
-- Ton professionnel, chaleureux mais sobre : phrases claires, pas d'emphase.`;
+const SYSTEM = `Tu es Elise, assistante confidentielle de sante feminine pour jeunes Ivoiriennes (15-25 ans). Tu reponds en francais simple, bienveillant, sans jugement, en tutoyant toujours.
+
+PERIMETRE : cycle, contraception, IST, grossesse, sante mentale, violences. Hors de ce perimetre, tu l'indiques et tu reorientes.
+
+REGLES DE SECURITE (absolues) :
+- Tu ne poses JAMAIS de diagnostic. Tu ne nommes JAMAIS une maladie probable a partir de symptomes.
+- Tu ne prescris JAMAIS et tu ne nommes JAMAIS de medicament ni de posologie.
+- Tu ne demandes pas de lister des symptomes "pour conseiller". Si besoin, tu aides a PREPARER une consultation.
+- Tu ne presumes pas l'age de la personne.
+- Tu ne salues qu'au tout premier message de la conversation. Si l'historique contient deja un echange, tu ne dis NI "Bonjour" NI "Bienvenue" : tu reponds directement.
+
+REGLES DE FORMAT (obligatoires) :
+- INTERDIT d'utiliser les caracteres * et # dans ta reponse. Jamais de markdown.
+- Pour mettre en valeur : uniquement <b>mot important</b>.
+- Paragraphes courts separes par <br><br>. Listes avec <ul><li>...</li></ul> ou <ol><li>...</li></ol>.
+- Aucun emoji. Ton chaleureux mais sobre. Maximum 160 mots.`;
 
 /** Nettoie le markdown residuel et normalise en HTML sur pour le frontend. */
 function formatHtml(input: string): string {
@@ -64,29 +79,16 @@ function formatHtml(input: string): string {
   s = s.replace(/\n{3,}/g, '\n\n').replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
   s = s.replace(/(<br>\s*){3,}/g, '<br><br>');
   s = s.replace(/\*/g, '').replace(/^#+\s*/gm, '');
-  // filet de securite : supprime les emojis / symboles unicode decoratifs
   s = s.replace(/[\u{1F000}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{2764}\u{2022}\u{25CF}\u{25B6}\u{2716}\u{2714}]/gu, '');
   return s.trim();
 }
 
-
-function localClassify(text: string): Classified {
-  const t = text.toLowerCase();
-  const red = ['forc','viol','agress','suicid','mourir','me tuer','frap','menac','couteau','saigne beaucoup','hemorragie','evanoui','battue','kidnapp'];
-  const orange = ['retard','enceinte','test de grossesse','ist','ecoulement','brulure','bouton','demangeaison','pilule du lendemain','fievre','pertes','rapport non protege'];
-  const yellow = ['douleur','triste','seule','angoiss','stress','fatigu','irregulier','deprime','peur','pleure','insomnie','anxieuse'];
-
-  let level: RiskLevel = 'green';
-  if (red.some((k) => t.includes(k))) level = 'red';
-  else if (orange.some((k) => t.includes(k))) level = 'orange';
-  else if (yellow.some((k) => t.includes(k))) level = 'yellow';
-  return { level, label: LABELS[level], reason: 'Classification locale', via: 'local' };
-}
 @Injectable()
 export class ClaudeService {
   private client: Anthropic | null = null;
   private modelName: string;
-  constructor() {
+
+  constructor(private safety: SafetyService) {
     const key = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY || '';
     this.modelName = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
     if (key) {
@@ -97,34 +99,159 @@ export class ClaudeService {
   get model() { return this.modelName; }
 
   /**
-   * Streaming type ChatGPT :
-   * 1) evenement "meta" immediat (classement via Safety Engine local, ultra-rapide)
-   * 2) evenements "chunk" au fil de l'eau depuis Claude
-   * 3) evenement "done" en fin de flux
-   * En cas d'echec Claude : replay local anime (meme effet visuel).
+   * Streaming : meta immediat (plancher liste d'alerte) -> chunk* -> done.
+   * @param history echanges precedents de la session, pour le contexte.
    */
-  async *streamAnswer(question: string): AsyncGenerator<StreamEvent> {
-    // 1) Classification instantanee pour afficher le badge tout de suite
-    const classification = localClassify(question);
-    yield { type: 'meta', level: classification.level, via: this.client ? 'claude' : 'local' };
+  async *streamAnswer(question: string, history: Turn[] = []): AsyncGenerator<StreamEvent> {
+    const verdict = this.safety.classifyByList(question);
 
-    if (!this.client) {
-      yield* this.localStream(question, classification.level);
+    // Niveau rouge : message preecrit, affiche immediatement, sans passer par le LLM.
+    if (verdict.listLevel === 'red') {
+      yield { type: 'meta', level: 'red', via: 'local' };
+      yield* this.animatedReplay(this.safety.emergencyHtml(question), 'red');
       return;
     }
-    try {
-      const prompt = `Message: """${question}""" Reponds format: NIVEAU: GREEN|YELLOW|ORANGE|RED / RAISON: phrase / REPONSE: reponse HTML (sans *, sans #, avec <b>, <br><br>, <ul><li> si liste, max 180 mots, Abidjan + 185/1308/139 si grave).`;
-      const raw = await this.callClaude(prompt);
-      yield* this.animatedReplay(this.extractResponse(raw), classification.level);
+
+    // Contournement : refus poli, journalise, oriente.
+    if (verdict.bypass) {
+      const level = this.safety.combine(verdict.listLevel, 'orange');
+      yield { type: 'meta', level, via: 'local' };
+      yield* this.animatedReplay(this.safety.bypassReplyHtml(), level);
       return;
+    }
+
+    // Badge immediat au plancher liste ; le niveau final (>= plancher) arrive au 'done'.
+    yield { type: 'meta', level: verdict.listLevel, via: this.client ? 'claude' : 'local' };
+
+    if (!this.client) {
+      yield* this.animatedReplay(this.localAnswer(question, verdict.listLevel, history), verdict.listLevel);
+      return;
+    }
+
+    try {
+      const { level, html } = await this.generate(question, history, verdict.listLevel);
+      yield* this.animatedReplay(html, level);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.log('[Claude] ERREUR stream:', (e as Error).message?.slice(0, 150));
-      yield* this.localStream(question, classification.level);
+      yield* this.animatedReplay(this.localAnswer(question, verdict.listLevel, history), verdict.listLevel);
     }
   }
 
-  /** Replay anime d'un texte Claude : effet machine a ecrire. */
+  /** Version non-streaming (POST /chat), meme logique de securite. */
+  async classifyAndAnswer(question: string, history: Turn[] = []) {
+    const verdict = this.safety.classifyByList(question);
+
+    if (verdict.listLevel === 'red') {
+      return {
+        answer: this.safety.emergencyHtml(question),
+        classification: { level: 'red' as RiskLevel, label: LABELS.red, reason: 'Urgence detectee', via: 'local' as const },
+      };
+    }
+    if (verdict.bypass) {
+      const level = this.safety.combine(verdict.listLevel, 'orange');
+      return {
+        answer: this.safety.bypassReplyHtml(),
+        classification: { level, label: LABELS[level], reason: 'Tentative de contournement', via: 'local' as const },
+      };
+    }
+
+    if (!this.client) {
+      return {
+        answer: this.localAnswer(question, verdict.listLevel, history),
+        classification: { level: verdict.listLevel, label: LABELS[verdict.listLevel], reason: 'Classification locale', via: 'local' as const },
+      };
+    }
+
+    try {
+      const { level, html, reason } = await this.generate(question, history, verdict.listLevel);
+      return {
+        answer: html,
+        classification: { level, label: LABELS[level], reason, via: 'claude' as const },
+      };
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.log('[Claude] ERREUR:', (e as Error).message?.slice(0, 200));
+      return {
+        answer: this.localAnswer(question, verdict.listLevel, history),
+        classification: { level: verdict.listLevel, label: LABELS[verdict.listLevel], reason: 'Repli local', via: 'local' as const },
+      };
+    }
+  }
+
+  /**
+   * Appelle le modele avec l'historique, puis applique :
+   *   - niveau final = max(plancher liste, niveau LLM) ;
+   *   - filtre de sortie (pas de diagnostic ni de medicament).
+   */
+  private async generate(
+    question: string,
+    history: Turn[],
+    listLevel: RiskLevel,
+  ): Promise<{ level: RiskLevel; html: string; reason: string }> {
+    const raw = await this.callClaude(question, history);
+
+    const m = raw.match(/NIVEAU:\s*(GREEN|YELLOW|ORANGE|RED)/i);
+    const llmLevel = (m ? m[1].toLowerCase() : null) as RiskLevel | null;
+    let level = this.safety.combine(listLevel, llmLevel);
+
+    const reason = ((raw.split(/RAISON:/i)[1] || '').split('\n')[0] || 'Analyse Elise').trim();
+
+    // Si le modele a finalement estime une urgence, on sert le message preecrit.
+    if (level === 'red') {
+      return { level, html: this.safety.emergencyHtml(question), reason };
+    }
+
+    let html = formatHtml((raw.split(/REPONSE:/i)[1] || raw).trim());
+
+    // Filtre de sortie : pas de diagnostic nomme ni de medicament.
+    const filtered = this.safety.filterOutput(html);
+    if (filtered.blocked) {
+      html = filtered.html;
+      // Une reponse qui tentait de diagnostiquer merite au moins le niveau consultation.
+      level = this.safety.combine(level, 'orange');
+    }
+
+    return { level, html, reason };
+  }
+
+  private async callClaude(question: string, history: Turn[]): Promise<string> {
+    if (!this.client) throw new Error('Claude not configured');
+
+    // Historique transmis au modele (limite aux derniers echanges pour la latence).
+    const MAX_TURNS = 10;
+    const recent = history.slice(-MAX_TURNS);
+    const messages: Anthropic.MessageParam[] = recent.map((t) => ({
+      role: t.role,
+      content: t.content,
+    }));
+    // Le dernier message utilisateur, avec la consigne de format.
+    messages.push({
+      role: 'user',
+      content:
+        `Message: """${question}"""\n` +
+        `Reponds EXACTEMENT au format :\n` +
+        `NIVEAU: GREEN|YELLOW|ORANGE|RED\n` +
+        `RAISON: une phrase courte\n` +
+        `REPONSE: reponse HTML (sans *, sans #, avec <b>, <br><br>, <ul><li> si liste, max 160 mots). ` +
+        `Jamais de diagnostic ni de medicament. Ne salue pas si la conversation a deja commence.`,
+    });
+
+    const res = await this.client.messages.create({
+      model: this.modelName,
+      max_tokens: 600,
+      system: SYSTEM,
+      messages,
+    });
+    const blocks: any[] = (res as any).content || [];
+    return blocks
+      .filter((b) => b.type === 'text' && typeof b.text === 'string')
+      .map((b) => b.text)
+      .join('\n')
+      .trim();
+  }
+
+  /** Replay anime d'un texte : effet machine a ecrire. */
   private async *animatedReplay(answerHtml: string, level: RiskLevel): AsyncGenerator<StreamEvent> {
     const words = answerHtml.split(' ');
     let shown = '';
@@ -138,65 +265,23 @@ export class ClaudeService {
     yield { type: 'done', level };
   }
 
-  /** Replay local anime : decoupe la reponse en mots pour un effet machine a ecrire. */
-  private async *localStream(q: string, level: RiskLevel): AsyncGenerator<StreamEvent> {
-    const answer = this.localAnswer(q, level);
-    yield* this.animatedReplay(answer, level);
-  }
-
-  private async callClaude(prompt: string): Promise<string> {
-    if (!this.client) throw new Error('Claude not configured');
-    const res = await this.client.messages.create({
-      model: this.modelName,
-      max_tokens: 600,
-      system: SYSTEM,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const blocks: any[] = (res as any).content || [];
-    return blocks
-      .filter((b) => b.type === 'text' && typeof b.text === 'string')
-      .map((b) => b.text)
-      .join('\n')
-      .trim();
-  }
-
-  private extractResponse(raw: string): string {
-    const parts = raw.split(/REPONSE:/i);
-    return (parts[1] || raw).trim();
-  }
-
-  async classifyAndAnswer(question: string) {
-    const fallback = localClassify(question);
-    if (!this.client) return { answer: this.localAnswer(question, fallback.level), classification: fallback };
-    try {
-      // eslint-disable-next-line no-console
-      console.log('[Claude] appel pour:', question.slice(0, 60));
-      const prompt = `Message: """${question}""" Reponds format: NIVEAU: GREEN|YELLOW|ORANGE|RED / RAISON: phrase / REPONSE: reponse HTML (sans *, sans #, avec <b>, <br><br>, <ul><li> si liste, max 180 mots, Abidjan + 185/1308/139 si grave).`;
-      const raw = await this.callClaude(prompt);
-      // eslint-disable-next-line no-console
-      console.log('[Claude] reponse recue');
-      const m = raw.match(/NIVEAU:\s*(GREEN|YELLOW|ORANGE|RED)/i);
-      const lvl = (m ? m[1].toLowerCase() : fallback.level) as RiskLevel;
-      let rep = (raw.split(/REPONSE:/i)[1] || raw).trim();
-      rep = formatHtml(rep);
-      const rs = ((raw.split(/RAISON:/i)[1] || '').split('\n')[0] || 'Classification Claude').trim();
-      return { answer: rep, classification: { level: lvl, label: LABELS[lvl], reason: rs, via: 'claude' as const } };
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.log('[Claude] ERREUR:', (e as Error).message?.slice(0, 200));
-      return { answer: this.localAnswer(question, fallback.level), classification: fallback };
-    }
-  }
-  private localAnswer(q: string, level: RiskLevel): string {
+  /**
+   * Reponses locales (sans cle API). Respectent les memes regles :
+   * jamais de diagnostic ni de medicament nomme, salut uniquement si 1er message.
+   */
+  private localAnswer(q: string, level: RiskLevel, history: Turn[]): string {
     const t = q.toLowerCase();
-    if (level === 'red') return `Situation urgente : mets-toi en securite et appelle <b>SAMU 185</b> / <b>VBG 1308</b> / <b>psy 139</b>. Ce n'est pas ta faute. Raconte-moi, je t'ecoute.`;
-    if (t.includes('fertile') || t.includes('cycle')) return `Cycle 21-35j. Ovulation ~<b>14j avant regles</b>. Fertilite J-3 a J. Donne date dernieres regles, je calcule.`;
-    if (t.includes('contraception') || t.includes('pilule') || t.includes('preservatif')) return `Options : <b>preservatif</b> (anti-IST), <b>pilule</b>, <b>implant</b>, <b>DIU</b>. Urgence 72h. Voir <b>planning familial / AIBEF Abidjan</b>.`;
-    if (t.includes('retard') || t.includes('enceinte')) return `Retard >7j -> <b>test urinaire</b> (pharmacie, matin). Si positif, voir <b>sage-femme</b> vite. Depuis quand ?`;
-    if (t.includes('ist') || t.includes('ecoulement') || t.includes('depister')) return `Signes IST : ecoulements, brulures, boutons. Seul <b>test en centre</b> confirme. <b>Consulte cette semaine</b>.`;
-    if (t.includes('douleur')) return `<b>Bouillotte, paracetamol, repos</b>. Consulte si bloquant ou saignements abondants. Chaque cycle ?`;
-    if (t.includes('triste') || t.includes('stress') || t.includes('seule')) return `Je t'entends. Essaie : <b>parler, dormir 7-8h, marcher</b>. Si >2 semaines ou idees noires -> <b>139</b>. Depuis quand ?`;
-    if (t.includes('bonjour') || t.includes('salut')) return `Bonjour et bienvenue. Parle-moi <b>cycle, contraception, emotions</b>... sans tabou.`;
-    return `Merci. Precise : depuis quand, symptomes ? <b>Urgence = 185/1308/139</b>. Dis-m'en plus.`;
+    const first = history.length === 0;
+    if (level === 'orange')
+      return `Ce que tu decris merite l'avis d'un professionnel. <b>Consulte un centre de sante ou un planning familial a Abidjan</b> cette semaine (AIBEF, par exemple). Je peux t'aider a <b>preparer ta consultation</b> : depuis quand, a quels moments, ce que tu veux demander.`;
+    if (t.includes('fertile') || t.includes('cycle'))
+      return `Un cycle dure en general 21 a 35 jours. L'ovulation se situe environ <b>14 jours avant les regles</b>, et la periode fertile couvre les jours qui l'entourent. Donne-moi la date de tes dernieres regles, je t'aide a reperer cette periode.`;
+    if (t.includes('contraception') || t.includes('pilule') || t.includes('preservatif'))
+      return `Plusieurs moyens existent : le <b>preservatif</b> (seul a proteger aussi des IST), la pilule, l'implant, le DIU. Le choix depend de toi et merite d'etre discute en <b>planning familial</b> (AIBEF Abidjan). Veux-tu que je t'explique comment s'y rendre ?`;
+    if (t.includes('triste') || t.includes('stress') || t.includes('seule'))
+      return `Je t'entends, et ce que tu ressens compte. Essaie de <b>parler a une personne de confiance</b>, de dormir suffisamment et de bouger un peu chaque jour. Si cela dure plus de deux semaines ou pese trop lourd, la ligne <b>139</b> est la pour t'ecouter. Depuis quand te sens-tu ainsi ?`;
+    if (first && (t.includes('bonjour') || t.includes('salut')))
+      return `Bonjour, et bienvenue. Tu peux me parler <b>cycle, contraception, IST, grossesse ou emotions</b>, sans tabou. Qu'est-ce qui t'amene aujourd'hui ?`;
+    return `Merci de ta confiance. Pour mieux t'orienter, dis-moi depuis quand cela dure et ce que tu ressens. En cas d'urgence : <b>185 / 1308 / 139</b>.`;
   }
 }

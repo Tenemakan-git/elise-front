@@ -16,3 +16,6 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Resultats d evaluation (artefacts de test)
+backend/eval/results/
