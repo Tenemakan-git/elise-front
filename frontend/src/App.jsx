@@ -3,10 +3,11 @@ import ChatBox from './components/ChatBox.jsx';
 import {
   IconChat, IconBook, IconLifebuoy, IconShield, IconPhone, IconLock,
   IconDroplet, IconPill, IconActivity, IconHeart, IconUsers, IconAlert,
-  IconChevron, IconMapPin,
+  IconChevron, IconMapPin, IconClock,
 } from './components/Icons.jsx';
 import { QuickExitBar, PrivacyPanel, quickExit } from './components/Privacy.jsx';
-import { streamChat, getStatus, getResources, getResource, clearServerHistory, resetSession } from './api.js';
+import { streamChat, getStatus, getResources, getResource, clearServerHistory, resetSession, setSessionId, getSessionId } from './api.js';
+import { loadAll as loadHistory, saveSession, getSession, removeSession, clearAll as clearHistory } from './history.js';
 
 const LOGO = '/logo-elise.png';
 const LVL = {
@@ -36,6 +37,22 @@ function Emergency() {
   );
 }
 
+/** Liste des conversations enregistrées (sur l'appareil). Réutilisée sidebar + mobile. */
+function ConvList({ sessions, currentId, onNew, onLoad, onDelete }) {
+  return (
+    <div className="conv">
+      <button className="conv-new" onClick={onNew}>＋ Nouvelle conversation</button>
+      {sessions.length === 0 && <div className="conv-empty">Aucune conversation enregistrée.</div>}
+      {sessions.map((s) => (
+        <div key={s.id} className={'conv-row' + (s.id === currentId ? ' active' : '')}>
+          <button className="conv-open" onClick={() => onLoad(s.id)} title={s.title}>{s.title}</button>
+          <button className="conv-del" onClick={() => onDelete(s.id)} aria-label="Supprimer cette conversation">×</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState('chat');
   const [msgs, setMsgs] = useState([WELCOME]);
@@ -47,7 +64,41 @@ export default function App() {
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [discreet, setDiscreet] = useState(true);
   const [hidden, setHidden] = useState(false);
+  const [sessions, setSessions] = useState([]);      // historique local (sur l'appareil)
+  const [currentId, setCurrentId] = useState(getSessionId());
+  const [historyOpen, setHistoryOpen] = useState(false); // panneau historique (mobile)
   const chatRef = useRef(null);
+
+  // Historique local : charge la liste au démarrage.
+  useEffect(() => { setSessions(loadHistory()); }, []);
+
+  // Sauvegarde la conversation courante sur l'appareil quand une réponse se termine.
+  useEffect(() => {
+    if (loading) return;
+    saveSession(currentId, msgs);
+    setSessions(loadHistory());
+  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const newConversation = () => {
+    setMsgs([WELCOME]);
+    setCurrentId(resetSession());
+    setHistoryOpen(false);
+    setTab('chat');
+  };
+  const loadConversation = (id) => {
+    const s = getSession(id);
+    if (!s) return;
+    setMsgs(s.msgs && s.msgs.length ? s.msgs : [WELCOME]);
+    setSessionId(id);
+    setCurrentId(id);
+    setHistoryOpen(false);
+    setTab('chat');
+  };
+  const deleteConversation = (id) => {
+    removeSession(id);
+    setSessions(loadHistory());
+    if (id === currentId) newConversation();
+  };
 
   const openArticle = async (id) => {
     setArticleLoading(true);
@@ -74,19 +125,24 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
 
-  const onExit = () => quickExit(() => { setMsgs([WELCOME]); });
+  // Sortie rapide : efface l'ecran ET tout l'historique local (ne laisse aucune trace).
+  const onExit = () => quickExit(() => { clearHistory(); setMsgs([WELCOME]); });
 
   const clearConversation = async () => {
+    removeSession(currentId);
+    setSessions(loadHistory());
     setMsgs([WELCOME]);
     await clearServerHistory();
-    resetSession();
+    setCurrentId(resetSession());
     setPrivacyOpen(false);
   };
   const clearAll = async () => {
     setMsgs([WELCOME]);
     await clearServerHistory();
-    resetSession();
-    try { localStorage.clear(); sessionStorage.clear(); } catch { /* noop */ }
+    clearHistory();
+    setSessions([]);
+    setCurrentId(resetSession());
+    try { sessionStorage.clear(); } catch { /* noop */ }
     setPrivacyOpen(false);
   };
 
@@ -162,6 +218,9 @@ export default function App() {
       </div>
       <div className="pills">
         <QuickExitBar onExit={onExit} />
+        <button className="pill hist-btn" onClick={() => setHistoryOpen(true)} aria-label="Mes conversations">
+          <IconClock size={14} />
+        </button>
         <button className="pill lock" onClick={() => setPrivacyOpen(true)} aria-label="Ouvrir les réglages de confidentialité">
           <IconLock size={13} /> Confidentiel
         </button>
@@ -175,6 +234,8 @@ export default function App() {
         <button className={tab === 'res' ? 'active' : ''} onClick={() => setTab('res')}><IconBook /> Ressources</button>
         <button className={tab === 'aide' ? 'active' : ''} onClick={() => setTab('aide')}><IconLifebuoy /> Besoin d’aide</button>
         <button className={tab === 'safety' ? 'active' : ''} onClick={() => setTab('safety')}><IconShield /> Comment Élise vous protège</button>
+        <div className="sec">Mes conversations</div>
+        <ConvList sessions={sessions} currentId={currentId} onNew={newConversation} onLoad={loadConversation} onDelete={deleteConversation} />
         <div className="sec">Urgences</div>
         <div className="side-urg">
           <div><span>SAMU</span><b>185</b></div>
@@ -334,5 +395,21 @@ export default function App() {
       discreet={discreet}
       onToggleDiscreet={() => setDiscreet((d) => !d)}
     />
+
+    {/* Panneau historique (surtout mobile) : même liste que la sidebar */}
+    {historyOpen && (
+      <div className="pv-overlay" onClick={() => setHistoryOpen(false)}>
+        <div className="pv-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Mes conversations">
+          <div className="pv-head">
+            <span><IconClock size={16} /> Mes conversations</span>
+            <button className="pv-x" onClick={() => setHistoryOpen(false)} aria-label="Fermer">×</button>
+          </div>
+          <div className="pv-sec">
+            <ConvList sessions={sessions} currentId={currentId} onNew={newConversation} onLoad={loadConversation} onDelete={deleteConversation} />
+            <p className="pv-hint">Ces conversations sont gardées uniquement sur cet appareil. La sortie rapide les efface toutes.</p>
+          </div>
+        </div>
+      </div>
+    )}
   </>);
 }

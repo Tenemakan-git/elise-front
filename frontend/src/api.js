@@ -13,6 +13,8 @@ export const resetSession = () => {
   sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
   return sessionId;
 };
+/** Reprendre une conversation existante : réutilise son identifiant. */
+export const setSessionId = (id) => { if (id) sessionId = id; return sessionId; };
 
 export const sendChat = (message) => api.post('/chat', { message, sessionId }).then((r) => r.data);
 export const getHistory = () => api.get('/chat/history', { params: { sessionId } }).then((r) => r.data);
