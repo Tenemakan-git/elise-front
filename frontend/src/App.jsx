@@ -6,7 +6,7 @@ import {
   IconChevron, IconMapPin,
 } from './components/Icons.jsx';
 import { QuickExitBar, PrivacyPanel, quickExit } from './components/Privacy.jsx';
-import { streamChat, getStatus, getResources, clearServerHistory, resetSession } from './api.js';
+import { streamChat, getStatus, getResources, getResource, clearServerHistory, resetSession } from './api.js';
 
 const LOGO = '/logo-elise.png';
 const LVL = {
@@ -15,7 +15,7 @@ const LVL = {
   orange: { t: 'Consultation', c: 'o' },
   red: { t: 'Urgence', c: 'r' },
 };
-const CARDS_ICON = { cycle: IconDroplet, contra: IconPill, ist: IconShield, mental: IconActivity, grossesse: IconHeart, violence: IconUsers };
+const RES_ICON = { droplet: IconDroplet, pill: IconPill, shield: IconShield, activity: IconActivity, heart: IconHeart, users: IconUsers, mappin: IconMapPin, book: IconBook };
 const WELCOME = { who: 'bot', level: null, html: 'Je suis <b>Élise</b>. Posez vos questions sur le cycle, la contraception, les IST ou la santé mentale — cet espace est confidentiel et sans jugement.' };
 
 function Emergency() {
@@ -42,10 +42,20 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState({ claudeEnabled: false, model: '' });
   const [res, setRes] = useState([]);
+  const [article, setArticle] = useState(null); // article de ressource en lecture
+  const [articleLoading, setArticleLoading] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [discreet, setDiscreet] = useState(true);
   const [hidden, setHidden] = useState(false);
   const chatRef = useRef(null);
+
+  const openArticle = async (id) => {
+    setArticleLoading(true);
+    setArticle({ id, loading: true });
+    try { setArticle(await getResource(id)); }
+    catch { setArticle(null); }
+    finally { setArticleLoading(false); }
+  };
 
   useEffect(() => { getStatus().then(setStatus).catch(() => {}); getResources().then(setRes).catch(() => {}); }, []);
   useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [msgs, loading, tab]);
@@ -213,26 +223,54 @@ export default function App() {
         <ChatBox onSend={push} loading={loading} />
       </section>)}
 
-      {tab === 'res' && (<section className="panel scroll">
+      {tab === 'res' && !article && (<section className="panel scroll">
         <div className="hero">
           <img src={LOGO} alt="" className="hero-img" />
-          <div><h2>Ressources vérifiées</h2><p>Sélectionnez un thème pour l’envoyer directement dans la conversation.</p></div>
+          <div><h2>Ressources vérifiées</h2><p>Des fiches documentées et sourcées, à lire tranquillement. Touchez une fiche pour l’ouvrir.</p></div>
         </div>
-        <div className="list">
-          {res.map((r) => {
-            const Ico = CARDS_ICON[r.id] || IconBook;
-            return (
-              <button key={r.id} className="row" onClick={() => { setTab('chat'); push(r.question); }}>
-                <span className="row-ico"><Ico size={18} /></span>
-                <span className="row-body">
-                  <span className="row-title">{r.title}</span>
-                  <span className="row-desc">{r.desc}</span>
-                </span>
-                <IconChevron size={16} />
-              </button>
-            );
-          })}
+        {[...new Set(res.map((r) => r.category))].map((cat) => (
+          <div key={cat} className="res-group">
+            <div className="res-cat">{cat}</div>
+            <div className="list">
+              {res.filter((r) => r.category === cat).map((r) => {
+                const Ico = RES_ICON[r.icon] || IconBook;
+                return (
+                  <button key={r.id} className="row" onClick={() => openArticle(r.id)}>
+                    <span className="row-ico"><Ico size={18} /></span>
+                    <span className="row-body">
+                      <span className="row-title">{r.title}</span>
+                      <span className="row-desc">{r.intro}</span>
+                    </span>
+                    <IconChevron size={16} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </section>)}
+
+      {tab === 'res' && article && (<section className="panel scroll">
+        <div className="art-top">
+          <button className="art-back" onClick={() => setArticle(null)}>‹ Ressources</button>
         </div>
+        {articleLoading || article.loading ? (
+          <div className="pad"><span className="dots"><i /><i /><i /></span></div>
+        ) : (
+          <article className="article">
+            <span className="art-cat">{article.category}</span>
+            <h2 className="art-title">{article.title}</h2>
+            <div className="art-body" dangerouslySetInnerHTML={{ __html: article.html }} />
+            {article.source && (
+              <p className="art-src">Source : {article.url
+                ? <a href={article.url} target="_blank" rel="noopener noreferrer">{article.source}</a>
+                : article.source}</p>
+            )}
+            <button className="art-ask" onClick={() => { setArticle(null); setTab('chat'); push(article.ask); }}>
+              <IconChat size={15} /> Poser une question à Élise sur ce sujet
+            </button>
+          </article>
+        )}
       </section>)}
 
       {tab === 'aide' && (<section className="panel scroll">

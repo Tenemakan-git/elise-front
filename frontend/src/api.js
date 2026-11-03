@@ -18,6 +18,7 @@ export const sendChat = (message) => api.post('/chat', { message, sessionId }).t
 export const getHistory = () => api.get('/chat/history', { params: { sessionId } }).then((r) => r.data);
 export const getStatus = () => api.get('/chat/status').then((r) => r.data);
 export const getResources = () => api.get('/resources').then((r) => r.data);
+export const getResource = (id) => api.get(`/resources/${id}`).then((r) => r.data);
 
 /** Efface l'historique de la session cote serveur (bouton "Tout effacer"). */
 export const clearServerHistory = () =>
