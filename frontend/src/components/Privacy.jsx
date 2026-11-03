@@ -74,6 +74,7 @@ export function PrivacyPanel({ open, onClose, onClearConversation, onClearAll, d
             <li>Aucun contenu identifiable n'est conservé sur nos serveurs.</li>
             <li>Aucun compte, aucun traceur, aucune publicité.</li>
           </ul>
+          <p className="pv-hint">La dictée vocale utilise le service de reconnaissance de votre navigateur et peut traiter votre voix en ligne ; dans le doute, écrivez votre message.</p>
         </div>
       </div>
     </div>
