@@ -16,7 +16,7 @@ export const resetSession = () => {
 /** Reprendre une conversation existante : réutilise son identifiant. */
 export const setSessionId = (id) => { if (id) sessionId = id; return sessionId; };
 
-export const sendChat = (message) => api.post('/chat', { message, sessionId }).then((r) => r.data);
+export const sendChat = (message, history = []) => api.post('/chat', { message, sessionId, history }).then((r) => r.data);
 export const getHistory = () => api.get('/chat/history', { params: { sessionId } }).then((r) => r.data);
 export const getStatus = () => api.get('/chat/status').then((r) => r.data);
 export const getResources = () => api.get('/resources').then((r) => r.data);
@@ -30,11 +30,11 @@ export const clearServerHistory = () =>
  * Streaming SSE (type ChatGPT) : lit le flux POST /chat/stream et
  * appelle onEvent({type:'meta'|'chunk'|'done', ...}) au fil de l'eau.
  */
-export async function streamChat(message, onEvent) {
+export async function streamChat(message, onEvent, history = []) {
   const resp = await fetch('/api/chat/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, sessionId }),
+    body: JSON.stringify({ message, sessionId, history }),
   });
   if (!resp.ok || !resp.body) throw new Error('stream unavailable');
   const reader = resp.body.getReader();

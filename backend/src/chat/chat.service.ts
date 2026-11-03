@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ClaudeService, StreamEvent, Turn } from './claude.service';
+import { ClientTurn } from './chat.dto';
 
 interface HistItem {
   id: string;
@@ -47,10 +48,35 @@ export class ChatService {
     return turns;
   }
 
+  /** Nettoie et borne l'historique fourni par le client (donnee non fiable). */
+  private sanitize(client?: ClientTurn[]): Turn[] {
+    if (!Array.isArray(client)) return [];
+    const MAX_TURNS = 20;
+    const MAX_LEN = 2000;
+    return client
+      .filter((t) => t && (t.role === 'user' || t.role === 'assistant') && typeof t.content === 'string')
+      .slice(-MAX_TURNS)
+      .map((t) => ({
+        role: t.role,
+        content: t.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_LEN),
+      }))
+      .filter((t) => t.content.length > 0);
+  }
+
+  /**
+   * Choix de l'historique : si le client en fournit un (conversation rouverte
+   * depuis l'appareil), il fait foi — le serveur ne conserve rien de durable.
+   * Sinon, repli sur le store memoire de la session (compat).
+   */
+  private pickHistory(clientHistory: ClientTurn[] | undefined, store: HistItem[]): Turn[] {
+    const fromClient = this.sanitize(clientHistory);
+    return fromClient.length ? fromClient : this.turns(store);
+  }
+
   /** Flux SSE : meta -> chunk* -> done, avec historique de session. */
-  async *stream(message: string, sessionId?: string): AsyncGenerator<string> {
+  async *stream(message: string, sessionId?: string, clientHistory?: ClientTurn[]): AsyncGenerator<string> {
     const store = this.store(sessionId);
-    const history = this.turns(store);
+    const history = this.pickHistory(clientHistory, store);
 
     let finalLevel = 'green';
     let full = '';
@@ -69,9 +95,9 @@ export class ChatService {
     });
   }
 
-  async send(message: string, sessionId?: string) {
+  async send(message: string, sessionId?: string, clientHistory?: ClientTurn[]) {
     const store = this.store(sessionId);
-    const history = this.turns(store);
+    const history = this.pickHistory(clientHistory, store);
 
     const { answer, classification, source } = await this.claude.classifyAndAnswer(message, history);
     const item: HistItem = {

@@ -147,6 +147,18 @@ export default function App() {
   };
 
   const push = async (text) => {
+    // Historique envoyé au serveur (il ne conserve rien) : la conversation
+    // jusqu'ici, sans le message d'accueil ni les messages en cours de stream.
+    const history = [];
+    let seenUser = false;
+    for (const m of msgs) {
+      if (m.streaming) continue;
+      const content = String(m.html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!content) continue;
+      if (m.who === 'user') { seenUser = true; history.push({ role: 'user', content }); }
+      else if (m.who === 'bot' && seenUser) { history.push({ role: 'assistant', content }); }
+    }
+
     setMsgs((m) => [...m, { who: 'user', html: text }, { who: 'bot', level: null, html: '', streaming: true }]);
     setLoading(true);
     let accHtml = '';
@@ -190,7 +202,7 @@ export default function App() {
             return copy;
           });
         }
-      });
+      }, history);
     } catch {
       setMsgs((m) => {
         const copy = [...m];

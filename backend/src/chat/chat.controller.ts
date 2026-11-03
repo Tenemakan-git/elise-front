@@ -9,7 +9,7 @@ export class ChatController {
 
   @Post()
   send(@Body() dto: ChatDto) {
-    return this.chat.send(dto.message, dto.sessionId);
+    return this.chat.send(dto.message, dto.sessionId, dto.history);
   }
 
   /** Streaming SSE (type ChatGPT) : meta -> chunk* -> done */
@@ -21,7 +21,7 @@ export class ChatController {
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders?.();
     try {
-      for await (const sse of this.chat.stream(dto.message, dto.sessionId)) {
+      for await (const sse of this.chat.stream(dto.message, dto.sessionId, dto.history)) {
         res.write(sse);
       }
     } finally {
